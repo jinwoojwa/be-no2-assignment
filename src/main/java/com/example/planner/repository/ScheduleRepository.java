@@ -11,7 +11,7 @@ public interface ScheduleRepository {
 
     ScheduleResponseDto createSchedule(Schedule schedule);
 
-    List<ScheduleResponseDto> getAllSchedule();
+    List<ScheduleResponseDto> getAllSchedule(String modifiedDate, String author, int page, int size);
 
     Schedule getScheduleById(Long id);
 

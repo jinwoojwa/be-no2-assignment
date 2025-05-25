@@ -12,7 +12,7 @@ public interface ScheduleService {
     ScheduleResponseDto createSchedule(ScheduleRequestDto dto);
 
     // 모든 일정 조회
-    ResponseEntity<List<ScheduleResponseDto>> getAllSchedule();
+    ResponseEntity<List<ScheduleResponseDto>> getAllSchedule(String modifiedDate, String author, int page, int size);
 
     // 선택 일정 조회
     ScheduleResponseDto getScheduleById(Long id);

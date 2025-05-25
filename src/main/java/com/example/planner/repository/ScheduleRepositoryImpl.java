@@ -2,6 +2,7 @@ package com.example.planner.repository;
 
 import com.example.planner.dto.ScheduleResponseDto;
 import com.example.planner.entity.Schedule;
+import com.example.planner.exception.ScheduleNotFoundException;
 import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
@@ -14,10 +15,7 @@ import javax.sql.DataSource;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.LocalDateTime;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 
 @Repository
 public class ScheduleRepositoryImpl implements ScheduleRepository {
@@ -52,11 +50,29 @@ public class ScheduleRepositoryImpl implements ScheduleRepository {
     }
 
     @Override
-    public List<ScheduleResponseDto> getAllSchedule() {
+    public List<ScheduleResponseDto> getAllSchedule(
+            String modifiedDate, String author, int page, int size
+    ) {
+        StringBuilder sql = new StringBuilder("SELECT * FROM SCHEDULE WHERE 1=1");
+        List<Object> params = new ArrayList<>();
 
-        String sql = "SELECT * FROM SCHEDULE";
+        if (modifiedDate != null && !modifiedDate.isEmpty()) {
+            sql.append(" AND DATE_FORMAT(modified_date, '%Y-%m-%d') = ?");
+            params.add(modifiedDate);
+        }
 
-        return jdbcTemplate.query(sql, scheduleRowMapper());
+        if (author != null && !author.isEmpty()) {
+            sql.append(" AND author = ?");
+            params.add(author);
+        }
+
+        sql.append(" ORDER BY modified_date DESC");
+        sql.append(" LIMIT ? OFFSET ?");
+
+        params.add(size);                  // LIMIT
+        params.add(page * size);          // OFFSET
+
+        return jdbcTemplate.query(sql.toString(), params.toArray(), scheduleRowMapper());
     }
 
     @Override
@@ -66,7 +82,7 @@ public class ScheduleRepositoryImpl implements ScheduleRepository {
                 scheduleRowMapper2(),
                 id
         );
-        return result.stream().findAny().orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Does not exists id = " + id));
+        return result.stream().findAny().orElseThrow(() -> new ScheduleNotFoundException(id));
     }
 
     @Override
@@ -102,6 +118,7 @@ public class ScheduleRepositoryImpl implements ScheduleRepository {
                         rs.getLong("id"),
                         rs.getString("contents"),
                         rs.getString("author"),
+                        rs.getString("password"),
                         rs.getTimestamp("created_date").toLocalDateTime(),
                         rs.getTimestamp("modified_date").toLocalDateTime()
                 );

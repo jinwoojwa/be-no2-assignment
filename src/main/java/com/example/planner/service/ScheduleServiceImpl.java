@@ -3,6 +3,9 @@ package com.example.planner.service;
 import com.example.planner.dto.ScheduleRequestDto;
 import com.example.planner.dto.ScheduleResponseDto;
 import com.example.planner.entity.Schedule;
+import com.example.planner.exception.InvalidRequestException;
+import com.example.planner.exception.PasswordMismatchException;
+import com.example.planner.exception.ScheduleNotFoundException;
 import com.example.planner.repository.ScheduleRepository;
 import com.example.planner.repository.ScheduleRepositoryImpl;
 import org.springframework.http.HttpStatus;
@@ -28,14 +31,16 @@ public class ScheduleServiceImpl implements ScheduleService {
     public ScheduleResponseDto createSchedule(ScheduleRequestDto dto) {
 
         // 요청받은 데이터로 스케줄 객체를 생성
-        Schedule schedule = new Schedule(dto.getAuthor(), dto.getContents(), dto.getPassword(), LocalDateTime.now(), LocalDateTime.now());
+        Schedule schedule = new Schedule(dto.getContents(), dto.getAuthor(), dto.getPassword(), LocalDateTime.now(), LocalDateTime.now());
 
         return scheduleRepository.createSchedule(schedule);
     }
 
     @Override
-    public ResponseEntity<List<ScheduleResponseDto>> getAllSchedule() {
-        List<ScheduleResponseDto> schedules = scheduleRepository.getAllSchedule(); // repo에서 조회
+    public ResponseEntity<List<ScheduleResponseDto>> getAllSchedule(
+            String modifiedDate, String author, int page, int size
+    ) {
+        List<ScheduleResponseDto> schedules = scheduleRepository.getAllSchedule(modifiedDate, author, page, size); // repo에서 조회
         return ResponseEntity.ok(schedules);
     }
 
@@ -52,12 +57,16 @@ public class ScheduleServiceImpl implements ScheduleService {
     public ScheduleResponseDto updateSchedule(Long id, ScheduleRequestDto dto) {
 
         if (dto.getContents() == null || dto.getAuthor() == null) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "The content and author are required values");
+            throw new InvalidRequestException("The content and author are required values");
         }
 
-        // 수정 시점의 시간
-        LocalDateTime modifiedDate = LocalDateTime.now();
+        Schedule existingSchedule = scheduleRepository.getScheduleById(id);
+        // password 검증
+        if (!existingSchedule.getPassword().equals(dto.getPassword())) {
+            throw new PasswordMismatchException();
+        }
 
+        LocalDateTime modifiedDate = LocalDateTime.now();
         int updatedRow = scheduleRepository.updateSchedule(
                 id,
                 dto.getContents(),
@@ -66,7 +75,7 @@ public class ScheduleServiceImpl implements ScheduleService {
         );
 
         if (updatedRow == 0){
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "No data has been modified.");
+            throw new ScheduleNotFoundException(id);
         }
 
         Schedule schedule = scheduleRepository.getScheduleById(id);
@@ -76,10 +85,15 @@ public class ScheduleServiceImpl implements ScheduleService {
 
     @Override
     public void deleteSchedule(Long id, String password) {
-        int deletedRow = scheduleRepository.deleteSchedule(id);
+        Schedule schedule = scheduleRepository.getScheduleById(id);
 
+        if (!schedule.getPassword().equals(password)) {
+            throw new PasswordMismatchException();
+        }
+
+        int deletedRow = scheduleRepository.deleteSchedule(id);
         if (deletedRow == 0) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "No data has been deleted.");
+            throw new ScheduleNotFoundException(id);
         }
     }
 }
