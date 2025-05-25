@@ -13,6 +13,9 @@
 
 ## 1. API 명세
 
+Postman을 활용하여 API 명세서를 작성했습니다.
+
+[API 명세 링크](https://documenter.getpostman.com/view/44669074/2sB2qcCLLK)
 
 ---
 
